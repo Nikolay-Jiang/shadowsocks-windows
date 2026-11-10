@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Windows;
 using Newtonsoft.Json;
 using NLog;
 using Shadowsocks.Controller;
@@ -62,7 +61,7 @@ namespace Shadowsocks.Model
 
         public Configuration()
         {
-            version = UpdateChecker.Version;
+            version = VersionInfo.Version;
             strategy = "";
             index = 0;
             global = false;
@@ -196,7 +195,7 @@ namespace Shadowsocks.Model
                 ResetGeositeProxiedGroup(ref config.geositeProxiedGroups);
 
             // Mark the first run of a new version.
-            var appVersion = new Version(UpdateChecker.Version);
+            var appVersion = new Version(VersionInfo.Version);
             var configVersion = new Version(config.version);
             if (appVersion.CompareTo(configVersion) > 0)
             {
@@ -237,7 +236,7 @@ namespace Shadowsocks.Model
             }
             catch (Exception e)
             {
-                MessageBox.Show($"Cannot get the log level from NLog config file. Please check if the nlog config file exists with corresponding XML nodes.\n{e.Message}");
+                System.Windows.Forms.MessageBox.Show($"Cannot get the log level from NLog config file. Please check if the nlog config file exists with corresponding XML nodes.\n{e.Message}");
             }
         }
 

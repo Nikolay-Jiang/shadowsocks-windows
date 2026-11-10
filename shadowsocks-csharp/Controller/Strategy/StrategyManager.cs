@@ -11,7 +11,8 @@ namespace Shadowsocks.Controller.Strategy
         public StrategyManager(ShadowsocksController controller)
         {
             _strategies = new List<IStrategy>();
-            _strategies.Add(new BalancingStrategy(controller));
+            // Load balancing is intentionally hidden. Only High Availability
+            // is exposed in the Servers menu.
             _strategies.Add(new HighAvailabilityStrategy(controller));
             // TODO: load DLL plugins
         }

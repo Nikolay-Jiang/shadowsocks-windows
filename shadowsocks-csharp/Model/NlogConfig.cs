@@ -129,7 +129,7 @@ namespace Shadowsocks.Model
         /// </summary>
         public static void LoadConfiguration()
         {
-            LogManager.LoadConfiguration(NLOG_CONFIG_FILE_NAME);
+            LogManager.Setup().LoadConfigurationFromFile(NLOG_CONFIG_FILE_NAME);
         }
     }
 }

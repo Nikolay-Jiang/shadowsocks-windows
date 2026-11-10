@@ -5,6 +5,7 @@ using System.Threading;
 using System.Collections.Generic;
 using Shadowsocks.Model;
 using System.Diagnostics;
+using System.Linq;
 
 namespace Shadowsocks.Test
 {
@@ -200,6 +201,35 @@ namespace Shadowsocks.Test
 
 
         [TestMethod]
+        public void TestParseUrl_2022Identity()
+        {
+            string serverPsk = Convert.ToBase64String(Enumerable.Range(0, 32).Select(i => (byte)i).ToArray());
+            string userPsk = Convert.ToBase64String(Enumerable.Range(64, 32).Select(i => (byte)i).ToArray());
+            var server = new Server
+            {
+                server = "example.com",
+                server_port = 8388,
+                method = "2022-blake3-aes-256-gcm",
+                password = serverPsk + ":" + userPsk,
+                remarks = "2022"
+            };
+
+            string url = server.GetURL();
+            var parsed = Server.ParseURL(url);
+            Assert.IsNotNull(parsed);
+            Assert.AreEqual(server.method, parsed.method);
+            Assert.AreEqual(server.password, parsed.password);
+            Assert.AreEqual(server.remarks, parsed.remarks);
+
+            // Percent-encoded userinfo is accepted as well.
+            string plainUserInfo = Uri.EscapeDataString(server.method + ":" + server.password);
+            var parsedPlain = Server.ParseURL($"ss://{plainUserInfo}@example.com:8388/");
+            Assert.IsNotNull(parsedPlain);
+            Assert.AreEqual(server.method, parsedPlain.method);
+            Assert.AreEqual(server.password, parsedPlain.password);
+        }
+
+        [TestMethod]
         public void TestUrlGenerate()
         { 
             var generateUrlCases = new Dictionary<string, Server>
@@ -217,7 +247,7 @@ namespace Shadowsocks.Test
             var actual = Server.GetServers(testCase);
             if (actual.Count != expected.Count)
             {
-                Assert.Fail("Wrong number of configs. Expected: {0}. Actual: {1}", expected.Count, actual.Count);
+                Assert.Fail($"Wrong number of configs. Expected: {expected.Count}. Actual: {actual.Count}");
             }
 
             for (int i = 0; i < expected.Count; i++)

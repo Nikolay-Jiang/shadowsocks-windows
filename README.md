@@ -1,170 +1,93 @@
-<img src="shadowsocks-csharp/Resources/ssw128.png" alt="[logo]" width="48"/> Shadowsocks for Windows
+﻿<img src="shadowsocks-csharp/Resources/ssw128.png" alt="[logo]" width="48"/> Shadowsocks for Windows
 =======================
 
-[![Build Status]][Appveyor]
+[![Build Status](https://github.com/Nikolay-Jiang/shadowsocks-windows/actions/workflows/build.yml/badge.svg?branch=v4)](https://github.com/Nikolay-Jiang/shadowsocks-windows/actions/workflows/build.yml)
 
-[中文说明]
+A Windows client for Shadowsocks, including Shadowsocks 2022 (SIP022) and SIP023 user identities.
 
 ## Features
 
-1. System proxy configuration
-2. PAC mode and global mode
-3. [GeoSite] and user rules
-4. Supports HTTP proxy
-5. Supports server auto switching
-6. Supports UDP relay (see Usage)
-7. Supports plugins
+- System proxy, PAC mode and global mode
+- GeoSite-based PAC rules and user-defined rules
+- SOCKS5 and HTTP proxy
+- UDP relay
+- SIP003 plugins
+- `2022-blake3-aes-128-gcm` and `2022-blake3-aes-256-gcm` over TCP and UDP
+- Opt-in High Availability server switching
 
-## Downloads
+## Download
 
-Download the latest release from [release page].
+Download the latest release from [Releases](https://github.com/Nikolay-Jiang/shadowsocks-windows/releases).
 
 ## Requirements
 
-.NET Framework 4.8 or higher, Microsoft [Visual C++ 2015 Redistributable] (x86) .
+Windows 10 version 2004 or later, x64. The release is self-contained; no separate .NET runtime is required.
 
-## Basics
+## Quick start
 
-1. Find Shadowsocks icon in the notification tray
-2. You can add multiple servers in servers menu
-3. Select `Enable System Proxy` menu to enable system proxy. Please disable other
-proxy addons in your browser, or set them to use system proxy
-4. You can also configure your browser proxy manually if you don't want to enable
-system proxy. Set Socks5 or HTTP proxy to 127.0.0.1:1080. You can change this
-port in `Servers -> Edit Servers`
+1. Start `Shadowsocks.exe` and find the icon in the notification tray.
+2. Add servers from **Servers -> Edit Servers...**.
+3. Select a server, then enable **Enable System Proxy**.
+4. For manual proxy setup, use SOCKS5 or HTTP at `127.0.0.1:1080`. The local port can be changed in **Servers -> Edit Servers...**.
 
-## PAC
+For Store and WinHTTP applications, run the following as administrator:
 
-- The PAC rules are generated from the geosite database in [v2fly/domain-list-community](https://github.com/v2fly/domain-list-community).
-- Generation modes: whitelist mode and blacklist mode.
-- Domain groups: `geositeDirectGroups` and `geositeProxiedGroups`.
-    - `geositeDirectGroups` is initialized with `cn` and `geolocation-!cn@cn`.
-    - `geositeProxiedGroups` is initialized with `geolocation-!cn`.
-- To switch between different modes, modify the `geositePreferDirect` property in `gui-config.json`
-    - When `geositePreferDirect` is false (default), PAC works in whitelist mode. Exception rules are generated from `geositeDirectGroups`. Unmatched domains goes through the proxy.
-    - When `geositePreferDirect` is true, PAC works in blacklist mode. Blocking rules are generated from `geositeProxiedGroups`. Exception rules are generated from `geositeDirectGroups`. Unmatched domains are connected to directly.
-- Starting from 4.3.0.0, shadowsocks-windows defaults to whitelist mode with Chinese domains excluded from connecting via the proxy.
-- The new default values make sure that:
-    - When in whitelist mode, Chinese domains, including non-Chinese companies' Chinese CDNs, are connected to directly.
-    - When in blacklist mode, only non-Chinese domains goes through the proxy. Chinese domains, as well as non-Chinese companies' Chinese CDNs, are connected to directly.
-
-### User-defined rules
-
-- To define your own PAC rules, it's recommended to use the `user-rule.txt` file.
-- You can also modify `pac.txt` directly. But your modifications won't persist after updating geosite from the upstream.
-
-For Windows10 Store and related applications, please execute the following command under Admin privilege:
 ```
 netsh winhttp import proxy source=ie
 ```
 
-## Server Auto Switching
+## Shadowsocks 2022
 
-1. Load balance: choosing server randomly
-2. High availability: choosing the best server (low latency and packet loss)
-3. Choose By Total Package Loss: ping and choose. Please also enable
-   `Availability Statistics` in the menu if you want to use this
-4. Write your own strategy by implement IStrategy interface and send us a pull request!
+The password field is a base64 pre-shared key:
 
-## UDP
+- Single user: `BASE64_SERVER_PSK`
+- SIP023 user identity: `BASE64_SERVER_PSK:BASE64_USER_PSK`
 
-For UDP, you need to use SocksCap or ProxyCap to force programs you want
-to be proxied to tunnel over Shadowsocks
+Use **Generate** next to the password field to create a key of the correct length. After typing `:`, press **Generate** again to create the user key.
 
-## Multiple Instances
+## High Availability
 
-If you want to manage multiple servers using other tools like SwitchyOmega,
-you can start multiple Shadowsocks instances. To avoid configuration conflicts,
-copy Shadowsocks to a new directory and choose a different local port.
+Enable **Include in High Availability** in the server editor for every server that should participate. The option is off by default.
+
+- The current server is kept while it is healthy.
+- A failed connection switches to another participating server.
+- Failed servers cool down for 15 seconds, doubling up to 5 minutes.
+- TCP latency (EWMA) is used to choose between healthy servers; the client only rebalances to a clearly faster server once per minute.
+- UDP sessions stay on the server they started with.
+
+Load balancing is currently hidden.
+
+## PAC
+
+PAC rules are generated from [v2fly/domain-list-community](https://github.com/v2fly/domain-list-community). The default is whitelist mode with Chinese domains connected directly. Use `user-rule.txt` for custom rules; do not edit `pac.txt` if you want changes to survive updates.
 
 ## Plugins
 
-If you would like to connect to server via a plugin, please set the plugin's
-path (relative or absolute) on Edit Servers form.
-_Note_: Forward Proxy will not be used while a plugin is enabled.
+Set the plugin path and options in the server editor. SIP003 plugins are supported. Forward Proxy is not used while a plugin is enabled.
 
-Details:
-[Working with non SIP003 standard Plugin].
+## Hotkeys
 
-## Global hotkeys
+Open **Help -> Edit Hotkeys...** to record shortcuts. Hotkeys can be registered at startup. If you run multiple instances, use different key combinations.
 
-Hotkeys could be registered automatically on startup.
-If you are using multiple instances of Shadowsocks,
-you must set different key combination for each instance.
+## Build
 
-### How to input?
+Visual Studio 2022 and the .NET 10 SDK are required.
 
-1. Put focus in the corresponding textbox.
-2. Press the key combination that you want to use.
-3. Release all keys when you think it is ready.
-4. Your input appears in the textbox.
-
-### How to change?
-
-1. Put focus in the corresponding textbox.
-2. Press BackSpace key to clear content.
-3. Re-input new key combination.
-
-### How to deactivate?
-
-1. Clear content in the textbox that you want to deactivate,
-if you want to deactivate all, please clear all textboxes.
-2. Press OK button to confirm.
-
-### Meaning of label color
-
-- Green: This key combination is not occupied by other programs and register successfully.
-- Yellow: This key combination is occupied by other programs and you have to change to another one.
-- Transparent without color: The initial status.
-
-## Server Configuration
-
-Please visit [Servers] for more information.
-
-## Experimental
-
-[Experimental Features]
-
-## Development
-
-1. Visual Studio 2019 & .NET Framework 4.8 SDK are required.
-2. It is recommended to share your idea on the Issue Board before you start to work,
-especially for feature development.
+```bash
+dotnet build shadowsocks-windows.sln -c Release
+dotnet publish shadowsocks-csharp/shadowsocks-csharp.csproj \
+  -c Release -r win-x64 --self-contained true \
+  -p:PublishSingleFile=true \
+  -p:EnableCompressionInSingleFile=true
+```
 
 ## License
 
-[GPLv3]
+[GPLv3](https://github.com/Nikolay-Jiang/shadowsocks-windows/blob/v4/LICENSE.txt)
 
-## Open Source Components / Libraries
+## Third-party components
 
-```
-Caseless.Fody (MIT)              https://github.com/Fody/Caseless
-Costura.Fody (MIT)               https://github.com/Fody/Costura
-Fody (MIT)                       https://github.com/Fody/Fody
-GlobalHotKey (GPLv3)             https://github.com/kirmir/GlobalHotKey
-MdXaml (MIT)                     https://github.com/whistyun/MdXaml
-Newtonsoft.Json (MIT)            https://www.newtonsoft.com/json
-ReactiveUI.WPF (MIT)             https://github.com/reactiveui/ReactiveUI
-ReactiveUI.Events.WPF (MIT)      https://github.com/reactiveui/ReactiveUI
-ReactiveUI.Fody (MIT)            https://github.com/reactiveui/ReactiveUI
-ReactiveUI.Validation (MIT)      https://github.com/reactiveui/ReactiveUI.Validation
-WPFLocalizationExtension (MS-PL) https://github.com/XAMLMarkupExtensions/WPFLocalizationExtension/
-ZXing.Net (Apache 2.0)           https://github.com/micjahn/ZXing.Net
-
-libsscrypto (GPLv2)    https://github.com/shadowsocks/libsscrypto
-Privoxy (GPLv2)        https://www.privoxy.org
-Sysproxy ()            https://github.com/Noisyfox/sysproxy
-```
-
-
-
-[Appveyor]:     https://ci.appveyor.com/project/celeron533/shadowsocks-windows
-[Build Status]: https://ci.appveyor.com/api/projects/status/tfw57q6eecippsl5/branch/master?svg=true
-[release page]: https://github.com/shadowsocks/shadowsocks-csharp/releases
-[GeoSite]:      https://github.com/v2fly/domain-list-community
-[Servers]:      https://github.com/shadowsocks/shadowsocks/wiki/Ports-and-Clients#linux--server-side
-[中文说明]:     https://github.com/shadowsocks/shadowsocks-windows/wiki/Shadowsocks-Windows-%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E
-[Visual C++ 2015 Redistributable]:     https://www.microsoft.com/en-us/download/details.aspx?id=53840
-[GPLv3]:        https://github.com/shadowsocks/shadowsocks-windows/blob/master/LICENSE.txt
-[Working with non SIP003 standard Plugin]: https://github.com/shadowsocks/shadowsocks-windows/wiki/Working-with-non-SIP003-standard-Plugin
-[Experimental Features]: https://github.com/shadowsocks/shadowsocks-windows/wiki/Experimental
+- Newtonsoft.Json (MIT)
+- ZXing.Net (Apache 2.0)
+- Privoxy (GPLv2)
+- Sysproxy (https://github.com/Noisyfox/sysproxy)

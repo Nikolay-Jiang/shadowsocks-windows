@@ -30,39 +30,39 @@ namespace Shadowsocks.Model
 
         public void SaveSize()
         {
-            Properties.Settings.Default.Save();
+            LogViewerSettings.Save();
         }
 
         [JsonIgnore]
         public int Width
         {
-            get { return Properties.Settings.Default.LogViewerWidth; }
-            set { Properties.Settings.Default.LogViewerWidth = value; }
+            get { return LogViewerSettings.Current.Width; }
+            set { LogViewerSettings.Current.Width = value; }
         }
 
         [JsonIgnore]
         public int Height
         {
-            get { return Properties.Settings.Default.LogViewerHeight; }
-            set { Properties.Settings.Default.LogViewerHeight = value; }
+            get { return LogViewerSettings.Current.Height; }
+            set { LogViewerSettings.Current.Height = value; }
         }
         [JsonIgnore]
         public int Top
         {
-            get { return Properties.Settings.Default.LogViewerTop; }
-            set { Properties.Settings.Default.LogViewerTop = value; }
+            get { return LogViewerSettings.Current.Top; }
+            set { LogViewerSettings.Current.Top = value; }
         }
         [JsonIgnore]
         public int Left
         {
-            get { return Properties.Settings.Default.LogViewerLeft; }
-            set { Properties.Settings.Default.LogViewerLeft = value; }
+            get { return LogViewerSettings.Current.Left; }
+            set { LogViewerSettings.Current.Left = value; }
         }
         [JsonIgnore]
         public bool Maximized
         {
-            get { return Properties.Settings.Default.LogViewerMaximized; }
-            set { Properties.Settings.Default.LogViewerMaximized = value; }
+            get { return LogViewerSettings.Current.Maximized; }
+            set { LogViewerSettings.Current.Maximized = value; }
         }
 
         [JsonIgnore]

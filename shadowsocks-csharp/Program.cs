@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
@@ -11,13 +11,10 @@ using System.Windows.Forms;
 using CommandLine;
 using Microsoft.Win32;
 using NLog;
-using ReactiveUI;
 using Shadowsocks.Controller;
 using Shadowsocks.Controller.Hotkeys;
 using Shadowsocks.Util;
 using Shadowsocks.View;
-using Splat;
-using WPFLocalizeExtension.Engine;
 
 namespace Shadowsocks
 {
@@ -74,9 +71,6 @@ namespace Shadowsocks
             // todo: initialize the NLog configuartion
             Model.NLogConfig.TouchAndApplyNLogConfig();
 
-            // .NET Framework 4.7.2 on Win7 compatibility
-            ServicePointManager.SecurityProtocol |=
-                SecurityProtocolType.Tls | SecurityProtocolType.Tls11 | SecurityProtocolType.Tls12;
             #endregion
 
             #region Compactibility Check
@@ -88,14 +82,10 @@ namespace Shadowsocks
                 return;
             }
 
-            // Check .NET Framework version
-            if (!Utils.IsSupportedRuntimeVersion())
+            if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 19041))
             {
-                if (DialogResult.OK == MessageBox.Show(I18N.GetString("Unsupported .NET Framework, please update to {0} or later.", "4.8"),
-                "Shadowsocks Error", MessageBoxButtons.OKCancel, MessageBoxIcon.Error))
-                {
-                    Process.Start("https://dotnet.microsoft.com/download/dotnet-framework/net48");
-                }
+                MessageBox.Show("Shadowsocks requires Windows 10 version 2004 or later.",
+                    "Shadowsocks Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
             #endregion
@@ -106,22 +96,14 @@ namespace Shadowsocks
             Application.ThreadException += Application_ThreadException;
             // handle non-UI exceptions
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
+            TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
             Application.ApplicationExit += Application_ApplicationExit;
             SystemEvents.PowerModeChanged += SystemEvents_PowerModeChanged;
+            Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             AutoStartup.RegisterForRestart(true);
             #endregion
-
-            // We would use this in v5.
-            // Parameters would have to be dropped from views' constructors (VersionUpdatePromptView)
-            //Locator.CurrentMutable.RegisterViewsForViewModels(Assembly.GetCallingAssembly());
-
-            // Workaround for hosting WPF controls in a WinForms app.
-            // We have to manually set the culture for the LocalizeDictionary instance.
-            // https://stackoverflow.com/questions/374518/localizing-a-winforms-application-with-embedded-wpf-user-controls
-            // https://stackoverflow.com/questions/14668640/wpf-localize-extension-translate-window-at-run-time
-            LocalizeDictionary.Instance.Culture = Thread.CurrentThread.CurrentCulture;
 
 #if DEBUG
             // truncate privoxy log file while debugging
@@ -138,8 +120,15 @@ namespace Shadowsocks
             // Update online config 
             Task.Run(async () =>
             {
-                await Task.Delay(10 * 1000);
-                await MainController.UpdateAllOnlineConfig();
+                try
+                {
+                    await Task.Delay(10 * 1000);
+                    await MainController.UpdateAllOnlineConfig();
+                }
+                catch (Exception e)
+                {
+                    logger.LogUsefulException(e);
+                }
             });
 
 #region IPC Handler and Arguement Process
@@ -157,31 +146,24 @@ namespace Shadowsocks
 
         }
 
-        private static int exited = 0;
+        private static void TaskScheduler_UnobservedTaskException(object sender, UnobservedTaskExceptionEventArgs e)
+        {
+            logger.LogUsefulException(e.Exception);
+            e.SetObserved();
+        }
+
         private static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
         {
-            if (Interlocked.Increment(ref exited) == 1)
-            {
-                string errMsg = e.ExceptionObject.ToString();
-                logger.Error(errMsg);
-                MessageBox.Show(
-                    $"{I18N.GetString("Unexpected error, shadowsocks will exit. Please report to")} https://github.com/shadowsocks/shadowsocks-windows/issues {Environment.NewLine}{errMsg}",
-                    "Shadowsocks non-UI Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                Application.Exit();
-            }
+            Exception exception = e.ExceptionObject as Exception
+                                  ?? new Exception(e.ExceptionObject?.ToString() ?? "Unknown non-UI exception");
+            ErrorReporter.Report(exception, "Non-UI thread", fatal: true);
         }
 
         private static void Application_ThreadException(object sender, ThreadExceptionEventArgs e)
         {
-            if (Interlocked.Increment(ref exited) == 1)
-            {
-                string errorMsg = $"Exception Detail: {Environment.NewLine}{e.Exception}";
-                logger.Error(errorMsg);
-                MessageBox.Show(
-                    $"{I18N.GetString("Unexpected error, shadowsocks will exit. Please report to")} https://github.com/shadowsocks/shadowsocks-windows/issues {Environment.NewLine}{errorMsg}",
-                    "Shadowsocks UI Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                Application.Exit();
-            }
+            // Keep the tray client alive; the failed operation is reported and
+            // the rest of the application continues to run.
+            ErrorReporter.Report(e.Exception, "UI thread");
         }
 
         private static void SystemEvents_PowerModeChanged(object sender, PowerModeChangedEventArgs e)
@@ -224,6 +206,7 @@ namespace Shadowsocks
             Application.ApplicationExit -= Application_ApplicationExit;
             SystemEvents.PowerModeChanged -= SystemEvents_PowerModeChanged;
             Application.ThreadException -= Application_ThreadException;
+            TaskScheduler.UnobservedTaskException -= TaskScheduler_UnobservedTaskException;
             HotKeys.Destroy();
             if (MainController != null)
             {

@@ -16,7 +16,6 @@ using Shadowsocks.Controller.Service;
 using Shadowsocks.Controller.Strategy;
 using Shadowsocks.Model;
 using Shadowsocks.Util;
-using WPFLocalizeExtension.Engine;
 
 namespace Shadowsocks.Controller
 {
@@ -118,7 +117,7 @@ namespace Shadowsocks.Controller
                 ProgramUpdated.Invoke(this, new UpdatedEventArgs()
                 {
                     OldVersion = _config.version,
-                    NewVersion = UpdateChecker.Version,
+                    NewVersion = VersionInfo.Version,
                 });
                 // delete pac.txt when regeneratePacOnUpdate is true
                 if (_config.regeneratePacOnUpdate)
@@ -133,7 +132,7 @@ namespace Shadowsocks.Controller
                     }
                 // finish up first run of new version
                 _config.firstRunOnNewVersion = false;
-                _config.version = UpdateChecker.Version;
+                _config.version = VersionInfo.Version;
                 Configuration.Save(_config);
             }
             Reload();
@@ -173,7 +172,6 @@ namespace Shadowsocks.Controller
 
             NLogConfig.LoadConfiguration();
 
-            logger.Info($"WPF Localization Extension|Current culture: {LocalizeDictionary.CurrentCulture}");
 
             // set User-Agent for httpClient
             try
@@ -217,6 +215,7 @@ namespace Shadowsocks.Controller
                 privoxyRunner.Start(_config);
 
                 TCPRelay tcpRelay = new TCPRelay(this, _config);
+                tcpRelay.OnConnected += (o, e) => GetCurrentStrategy()?.UpdateLatency(e.server, e.latency);
                 tcpRelay.OnInbound += UpdateInboundCounter;
                 tcpRelay.OnOutbound += UpdateOutboundCounter;
                 tcpRelay.OnFailed += (o, e) => GetCurrentStrategy()?.SetFailure(e.server);
@@ -275,7 +274,12 @@ namespace Shadowsocks.Controller
             IStrategy strategy = GetCurrentStrategy();
             if (strategy != null)
             {
-                return strategy.GetAServer(type, localIPEndPoint, destEndPoint);
+                Server server = strategy.GetAServer(type, localIPEndPoint, destEndPoint);
+                if (server != null)
+                {
+                    return server;
+                }
+                logger.Debug($"Strategy {strategy.ID} returned no server; falling back to the manually selected server.");
             }
             if (_config.index < 0)
             {

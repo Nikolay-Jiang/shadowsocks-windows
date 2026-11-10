@@ -2,188 +2,291 @@
 using Shadowsocks.Model;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
-using System.Text;
 
 namespace Shadowsocks.Controller.Strategy
 {
+    /// <summary>
+    /// High Availability strategy.
+    ///
+    /// Only servers with <see cref="Server.highAvailability"/> enabled take
+    /// part. The strategy is deliberately passive: a real user connection is
+    /// the health probe. It keeps the current server while it is healthy,
+    /// switches immediately after a failure, and only rebalances to a
+    /// significantly faster server once a minute.
+    /// </summary>
     class HighAvailabilityStrategy : IStrategy
     {
-        private static Logger logger = LogManager.GetCurrentClassLogger();
+        public const string StrategyID = "com.shadowsocks.strategy.ha";
 
-        protected ServerStatus _currentServer;
-        protected Dictionary<Server, ServerStatus> _serverStatus;
-        ShadowsocksController _controller;
-        Random _random;
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        public class ServerStatus
+        private static readonly TimeSpan RebalanceInterval = TimeSpan.FromSeconds(60);
+        private const double UnknownLatencyMs = 200.0;
+        private const double LatencyAlpha = 0.3;
+
+        private sealed class ServerState
         {
-            // time interval between SYN and SYN+ACK
-            public TimeSpan latency;
-            public DateTime lastTimeDetectLatency;
-
-            // last time anything received
-            public DateTime lastRead;
-
-            // last time anything sent
-            public DateTime lastWrite;
-
-            // connection refused or closed before anything received
-            public DateTime lastFailure;
-
             public Server server;
+            public double latencyMs = double.NaN;
+            public DateTime lastLatencyAt = DateTime.MinValue;
+            public int consecutiveFailures;
+            public DateTime cooldownUntil = DateTime.MinValue;
+            public DateTime lastSuccessAt = DateTime.MinValue;
+            public DateTime lastFailureAt = DateTime.MinValue;
+            public DateTime lastRead = DateTime.Now;
+            public DateTime lastWrite = DateTime.Now;
 
-            public double score;
+            public ServerState(Server server)
+            {
+                this.server = server;
+            }
+
+            public bool InCooldown(DateTime now)
+            {
+                return now < cooldownUntil;
+            }
         }
+
+        private readonly Func<IEnumerable<Server>> _serverProvider;
+        private readonly object _lock = new object();
+        private readonly Dictionary<Server, ServerState> _states = new Dictionary<Server, ServerState>();
+        private ServerState _current;
+        private DateTime _lastRebalance = DateTime.MinValue;
 
         public HighAvailabilityStrategy(ShadowsocksController controller)
+            : this(() => controller.GetCurrentConfiguration().configs)
         {
-            _controller = controller;
-            _random = new Random();
-            _serverStatus = new Dictionary<Server, ServerStatus>();
         }
 
-        public string Name
+        internal HighAvailabilityStrategy(Func<IEnumerable<Server>> serverProvider)
         {
-            get { return I18N.GetString("High Availability"); }
+            _serverProvider = serverProvider;
         }
 
-        public string ID
-        {
-            get { return "com.shadowsocks.strategy.ha"; }
-        }
+        public string Name => I18N.GetString("High Availability");
+
+        public string ID => StrategyID;
 
         public void ReloadServers()
         {
-            // make a copy to avoid locking
-            var newServerStatus = new Dictionary<Server, ServerStatus>(_serverStatus);
-
-            foreach (var server in _controller.GetCurrentConfiguration().configs)
+            lock (_lock)
             {
-                if (!newServerStatus.ContainsKey(server))
+                var eligible = _serverProvider()
+                    .Where(server => server.highAvailability)
+                    .ToList();
+
+                var next = new Dictionary<Server, ServerState>();
+                foreach (Server server in eligible)
                 {
-                    var status = new ServerStatus();
-                    status.server = server;
-                    status.lastFailure = DateTime.MinValue;
-                    status.lastRead = DateTime.Now;
-                    status.lastWrite = DateTime.Now;
-                    status.latency = new TimeSpan(0, 0, 0, 0, 10);
-                    status.lastTimeDetectLatency = DateTime.Now;
-                    newServerStatus[server] = status;
+                    if (_states.TryGetValue(server, out ServerState state))
+                    {
+                        state.server = server;
+                        next[server] = state;
+                    }
+                    else
+                    {
+                        next[server] = new ServerState(server);
+                    }
                 }
-                else
+
+                _states.Clear();
+                foreach (var pair in next)
                 {
-                    // update settings for existing server
-                    newServerStatus[server].server = server;
+                    _states[pair.Key] = pair.Value;
+                }
+
+                if (_current != null && !_states.ContainsKey(_current.server))
+                {
+                    _current = null;
+                    _lastRebalance = DateTime.MinValue;
+                }
+
+                if (_current == null)
+                {
+                    ChooseNewServerLocked(DateTime.UtcNow);
                 }
             }
-            _serverStatus = newServerStatus;
-
-            ChooseNewServer();
         }
 
-        public Server GetAServer(IStrategyCallerType type, System.Net.IPEndPoint localIPEndPoint, EndPoint destEndPoint)
+        public Server GetAServer(IStrategyCallerType type, IPEndPoint localIPEndPoint, EndPoint destEndPoint)
         {
-            if (type == IStrategyCallerType.TCP)
+            lock (_lock)
             {
-                ChooseNewServer();
+                DateTime now = DateTime.UtcNow;
+                EnsureCurrentServerLocked(now, type == IStrategyCallerType.TCP);
+                return _current?.server;
             }
-            if (_currentServer == null)
+        }
+
+        private void EnsureCurrentServerLocked(DateTime now, bool allowRebalance)
+        {
+            if (_current == null || _current.InCooldown(now))
+            {
+                ChooseNewServerLocked(now);
+                return;
+            }
+
+            if (!allowRebalance || now - _lastRebalance < RebalanceInterval)
+            {
+                return;
+            }
+
+            _lastRebalance = now;
+            ServerState best = SelectBestLocked(now);
+            if (best != null && best != _current &&
+                ScoreLocked(best, now) < ScoreLocked(_current, now) * 0.75)
+            {
+                SetCurrentLocked(best, "lower latency");
+            }
+        }
+
+        private void ChooseNewServerLocked(DateTime now)
+        {
+            ServerState best = SelectBestLocked(now);
+            if (best == null)
+            {
+                _current = null;
+                return;
+            }
+            if (best != _current)
+            {
+                SetCurrentLocked(best, _current == null ? "initial" : "failover");
+            }
+        }
+
+        private ServerState SelectBestLocked(DateTime now)
+        {
+            if (_states.Count == 0)
             {
                 return null;
             }
-            return _currentServer.server;
+
+            var healthy = _states.Values.Where(state => !state.InCooldown(now)).ToList();
+            if (healthy.Count == 0)
+            {
+                // Every server is cooling down. Let the one that recovers
+                // first act as the next probe instead of having no server.
+                return _states.Values.OrderBy(state => state.cooldownUntil).First();
+            }
+
+            ServerState best = null;
+            double bestScore = double.MaxValue;
+            foreach (ServerState state in healthy)
+            {
+                double score = ScoreLocked(state, now);
+                if (score < bestScore)
+                {
+                    best = state;
+                    bestScore = score;
+                }
+            }
+            return best;
         }
 
-        /**
-         * once failed, try after 5 min
-         * and (last write - last read) < 5s
-         * and (now - last read) <  5s  // means not stuck
-         * and latency < 200ms, try after 30s
-         */
+        private double ScoreLocked(ServerState state, DateTime now)
+        {
+            double latency = double.IsNaN(state.latencyMs) ? UnknownLatencyMs : state.latencyMs;
+            latency = Math.Min(5000, Math.Max(1, latency));
+
+            double ageSeconds = Math.Max(0, (now - state.lastLatencyAt).TotalSeconds);
+            double staleFactor = 1 + Math.Min(1, ageSeconds / 300);
+            double failurePenalty = state.consecutiveFailures * 2000;
+            double jitter = 0.9 + Random.Shared.NextDouble() * 0.2;
+
+            return (latency * staleFactor + failurePenalty) * jitter;
+        }
+
+        private void SetCurrentLocked(ServerState state, string reason)
+        {
+            ServerState old = _current;
+            _current = state;
+            _lastRebalance = DateTime.UtcNow;
+            if (old == state)
+            {
+                return;
+            }
+            logger.Info($"HA selected {state.server} ({reason})");
+        }
+
         public void ChooseNewServer()
         {
-            ServerStatus oldServer = _currentServer;
-            List<ServerStatus> servers = new List<ServerStatus>(_serverStatus.Values);
-            DateTime now = DateTime.Now;
-            foreach (var status in servers)
+            lock (_lock)
             {
-                // all of failure, latency, (lastread - lastwrite) normalized to 1000, then
-                // 100 * failure - 2 * latency - 0.5 * (lastread - lastwrite)
-                status.score =
-                    100 * 1000 * Math.Min(5 * 60, (now - status.lastFailure).TotalSeconds)
-                    -2 * 5 * (Math.Min(2000, status.latency.TotalMilliseconds) / (1 + (now - status.lastTimeDetectLatency).TotalSeconds / 30 / 10) +
-                    -0.5 * 200 * Math.Min(5, (status.lastRead - status.lastWrite).TotalSeconds));
-                logger.Debug(String.Format("server: {0} latency:{1} score: {2}", status.server.ToString(), status.latency, status.score));
+                ChooseNewServerLocked(DateTime.UtcNow);
             }
-            ServerStatus max = null;
-            foreach (var status in servers)
+        }
+
+        public void UpdateLatency(Server server, TimeSpan latency)
+        {
+            lock (_lock)
             {
-                if (max == null)
+                if (!_states.TryGetValue(server, out ServerState state))
                 {
-                    max = status;
+                    return;
                 }
-                else
+
+                double milliseconds = Math.Min(5000, Math.Max(1, latency.TotalMilliseconds));
+                state.latencyMs = double.IsNaN(state.latencyMs)
+                    ? milliseconds
+                    : LatencyAlpha * milliseconds + (1 - LatencyAlpha) * state.latencyMs;
+                state.lastLatencyAt = DateTime.UtcNow;
+                state.consecutiveFailures = 0;
+                state.cooldownUntil = DateTime.MinValue;
+                state.lastSuccessAt = DateTime.UtcNow;
+            }
+        }
+
+        public void UpdateLastRead(Server server)
+        {
+            lock (_lock)
+            {
+                if (_states.TryGetValue(server, out ServerState state))
                 {
-                    if (status.score >= max.score)
-                    {
-                        max = status;
-                    }
+                    state.lastRead = DateTime.UtcNow;
                 }
             }
-            if (max != null)
+        }
+
+        public void UpdateLastWrite(Server server)
+        {
+            lock (_lock)
             {
-                if (_currentServer == null || max.score - _currentServer.score > 200)
+                if (_states.TryGetValue(server, out ServerState state))
                 {
-                    _currentServer = max;
-                    logger.Info($"HA switching to server: {_currentServer.server.ToString()}");
+                    state.lastWrite = DateTime.UtcNow;
                 }
             }
         }
 
-        public void UpdateLatency(Model.Server server, TimeSpan latency)
+        public void SetFailure(Server server)
         {
-            logger.Debug($"latency: {server.ToString()} {latency}");
-
-            ServerStatus status;
-            if (_serverStatus.TryGetValue(server, out status))
+            lock (_lock)
             {
-                status.latency = latency;
-                status.lastTimeDetectLatency = DateTime.Now;
+                if (!_states.TryGetValue(server, out ServerState state))
+                {
+                    return;
+                }
+
+                state.consecutiveFailures++;
+                state.lastFailureAt = DateTime.UtcNow;
+                state.cooldownUntil = DateTime.UtcNow + Backoff(state.consecutiveFailures);
+
+                if (_current == state)
+                {
+                    _current = null;
+                    _lastRebalance = DateTime.MinValue;
+                }
+
+                logger.Info($"HA failure on {server}; cooldown until {state.cooldownUntil:HH:mm:ss}");
             }
         }
 
-        public void UpdateLastRead(Model.Server server)
+        private static TimeSpan Backoff(int failures)
         {
-            logger.Debug($"last read: {server.ToString()}");
-
-            ServerStatus status;
-            if (_serverStatus.TryGetValue(server, out status))
-            {
-                status.lastRead = DateTime.Now;
-            }
-        }
-
-        public void UpdateLastWrite(Model.Server server)
-        {
-            logger.Debug($"last write: {server.ToString()}");
-
-            ServerStatus status;
-            if (_serverStatus.TryGetValue(server, out status))
-            {
-                status.lastWrite = DateTime.Now;
-            }
-        }
-
-        public void SetFailure(Model.Server server)
-        {
-            logger.Debug($"failure: {server.ToString()}");
-
-            ServerStatus status;
-            if (_serverStatus.TryGetValue(server, out status))
-            {
-                status.lastFailure = DateTime.Now;
-            }
+            double seconds = Math.Min(300, 15 * Math.Pow(2, Math.Max(0, failures - 1)));
+            return TimeSpan.FromSeconds(seconds);
         }
     }
 }

@@ -5,6 +5,7 @@ using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Security.Cryptography;
 using System.Web;
 using NLog;
 
@@ -24,7 +25,7 @@ namespace Shadowsocks.Controller
                 {
                     var rd = new byte[32];
                     RNG.GetBytes(rd);
-                    _cachedPacSecret = HttpServerUtility.UrlTokenEncode(rd);
+                    _cachedPacSecret = UrlTokenEncode(rd);
                 }
                 return _cachedPacSecret;
             }
@@ -49,9 +50,14 @@ namespace Shadowsocks.Controller
             logger.Debug("Set PAC URL:" + PacUrl);
         }
 
+        private static string UrlTokenEncode(byte[] data)
+        {
+            return Convert.ToBase64String(data).Replace('+', '-').Replace('/', '_').TrimEnd('=');
+        }
+
         private static string GetHash(string content)
         {
-            return HttpServerUtility.UrlTokenEncode(MbedTLS.MD5(Encoding.ASCII.GetBytes(content)));
+            return UrlTokenEncode(MD5.HashData(Encoding.ASCII.GetBytes(content)));
         }
 
         public override bool Handle(byte[] firstPacket, int length, Socket socket, object state)
@@ -168,7 +174,7 @@ namespace Shadowsocks.Controller
                 string pacContent = $"var __PROXY__ = '{proxy}';\n" + _pacDaemon.GetPACContent();
                 string responseHead =
 $@"HTTP/1.1 200 OK
-Server: ShadowsocksWindows/{UpdateChecker.Version}
+Server: ShadowsocksWindows/{VersionInfo.Version}
 Content-Type: application/x-ns-proxy-autoconfig
 Content-Length: { Encoding.UTF8.GetBytes(pacContent).Length}
 Connection: Close

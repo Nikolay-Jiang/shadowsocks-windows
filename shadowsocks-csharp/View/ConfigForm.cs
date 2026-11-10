@@ -1,4 +1,4 @@
-using Shadowsocks.Controller;
+﻿using Shadowsocks.Controller;
 using Shadowsocks.Model;
 using Shadowsocks.Properties;
 using System;
@@ -27,6 +27,8 @@ namespace Shadowsocks.View
             // Edit here to add/delete encryption method displayed in UI
             private static string[] inuseMethod = new string[]
             {
+                "2022-blake3-aes-256-gcm",
+                "2022-blake3-aes-128-gcm",
                 "none",
                 "plain",
                 "aes-256-gcm",
@@ -107,6 +109,48 @@ namespace Shadowsocks.View
         {
             I18N.TranslateForm(this);
             toolTip1.SetToolTip(PortableModeCheckBox, I18N.GetString("Restart required"));
+            UpdatePasswordFieldForMethod();
+        }
+
+        private void EncryptionSelect_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            UpdatePasswordFieldForMethod();
+        }
+
+        private string SelectedMethodName =>
+            (EncryptionSelect.SelectedItem as EncryptionMethod)?.name ?? Server.DefaultMethod;
+
+        private void UpdatePasswordFieldForMethod()
+        {
+            bool is2022 = Server.Is2022Method(SelectedMethodName);
+            PasswordGenerateButton.Visible = is2022;
+            if (is2022)
+            {
+                PasswordLabel.Text = "PSK (Base64)";
+                toolTip1.SetToolTip(PasswordTextBox,
+                    "serverPSK, or serverPSK:userPSK for a SIP023 user identity");
+            }
+            else
+            {
+                PasswordLabel.Text = I18N.GetString("Password");
+                toolTip1.SetToolTip(PasswordTextBox, "");
+            }
+        }
+
+        private void PasswordGenerateButton_Click(object sender, EventArgs e)
+        {
+            int keySize = Server.Get2022KeySize(SelectedMethodName);
+            if (keySize == 0)
+            {
+                return;
+            }
+            string key = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(keySize));
+            if (PasswordTextBox.Text.Contains(":"))
+            {
+                string userKey = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(keySize));
+                key += ":" + userKey;
+            }
+            PasswordTextBox.Text = key;
         }
 
         private void SetupValueChangedListeners()
@@ -115,6 +159,7 @@ namespace Shadowsocks.View
             ProxyPortTextBox.TextChanged += ConfigValueChanged;
             PasswordTextBox.TextChanged += ConfigValueChanged;
             EncryptionSelect.SelectedIndexChanged += ConfigValueChanged;
+            EncryptionSelect.SelectedIndexChanged += EncryptionSelect_SelectedIndexChanged;
             PluginTextBox.TextChanged += ConfigValueChanged;
             PluginArgumentsTextBox.TextChanged += ConfigValueChanged;
             PluginOptionsTextBox.TextChanged += ConfigValueChanged;
@@ -122,6 +167,7 @@ namespace Shadowsocks.View
             TimeoutTextBox.TextChanged += ConfigValueChanged;
             PortableModeCheckBox.CheckedChanged += ConfigValueChanged;
             ServerPortTextBox.TextChanged += ConfigValueChanged;
+            HighAvailabilityCheckBox.CheckedChanged += ConfigValueChanged;
         }
 
         private void Controller_ConfigChanged(object sender, EventArgs e)
@@ -187,7 +233,8 @@ namespace Shadowsocks.View
                     plugin_args = PluginArgumentsTextBox.Text,
                     remarks = RemarksTextBox.Text,
                     timeout = timeout.Value,
-                    group = GroupTextBox.Text
+                    group = GroupTextBox.Text,
+                    highAvailability = HighAvailabilityCheckBox.Checked
                 };
 
                 return true;
@@ -324,6 +371,17 @@ namespace Shadowsocks.View
             }
             else
             {
+                string method = SelectedMethodName;
+                if (Server.Is2022Method(method))
+                {
+                    string error = Server.Validate2022Password(method, outPassword);
+                    if (error != null)
+                    {
+                        MessageBox.Show(error, I18N.GetString("Invalid PSK"));
+                        PasswordTextBox.Focus();
+                        return false;
+                    }
+                }
                 password = outPassword;
             }
             return true;
@@ -384,6 +442,7 @@ namespace Shadowsocks.View
             ServerPortTextBox.Text = server.server_port.ToString();
             PasswordTextBox.Text = server.password;
             EncryptionSelect.SelectedItem = EncryptionMethod.GetMethod(server.method ?? Server.DefaultMethod);
+            UpdatePasswordFieldForMethod();
             PluginTextBox.Text = server.plugin;
             PluginOptionsTextBox.Text = server.plugin_opts;
             PluginArgumentsTextBox.Text = server.plugin_args;
@@ -396,6 +455,8 @@ namespace Shadowsocks.View
             TimeoutTextBox.Text = server.timeout.ToString();
 
             GroupTextBox.Text = server.group;
+
+            HighAvailabilityCheckBox.Checked = server.highAvailability;
 
             isChange = false;
         }
@@ -612,11 +673,6 @@ namespace Shadowsocks.View
         private void UsePluginArgCheckBox_CheckedChanged(object sender, EventArgs e)
         {
             ShowHidePluginArgInput(NeedPluginArgCheckBox.Checked);
-        }
-
-        private void EncryptionSelect_SelectedIndexChanged(object sender, EventArgs e)
-        {
-
         }
     }
 }

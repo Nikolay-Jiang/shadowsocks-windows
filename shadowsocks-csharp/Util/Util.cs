@@ -12,6 +12,7 @@ using System.Drawing;
 using ZXing;
 using ZXing.QrCode;
 using ZXing.Common;
+using ZXing.Windows.Compatibility;
 
 namespace Shadowsocks.Util
 {
