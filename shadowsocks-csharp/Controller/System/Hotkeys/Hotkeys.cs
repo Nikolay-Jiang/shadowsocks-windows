@@ -111,8 +111,20 @@ namespace Shadowsocks.Controller.Hotkeys
                 return null;
             }
 
-            var converter = new KeysConverter();
-            string keyName = converter.ConvertToString(keyCode) ?? keyCode.ToString();
+            string keyName;
+            int digit = keyCode - Keys.D0;
+            if (digit >= 0 && digit <= 9)
+            {
+                // KeysConverter returns "2" for Keys.D2 on .NET, while the old
+                // WPF implementation produced "D2". Keep the old format so
+                // existing hotkey settings continue to round-trip.
+                keyName = "D" + digit;
+            }
+            else
+            {
+                var converter = new KeysConverter();
+                keyName = converter.ConvertToString(keyCode) ?? keyCode.ToString();
+            }
             parts.Add(keyName);
             return string.Join("+", parts);
         }
@@ -148,8 +160,16 @@ namespace Shadowsocks.Controller.Hotkeys
                     }
                 }
 
-                var converter = new KeysConverter();
-                object parsed = converter.ConvertFromString(keyText);
+                object parsed;
+                if (keyText.Length == 1 && keyText[0] >= '0' && keyText[0] <= '9')
+                {
+                    parsed = (Keys)((int)Keys.D0 + (keyText[0] - '0'));
+                }
+                else
+                {
+                    var converter = new KeysConverter();
+                    parsed = converter.ConvertFromString(keyText);
+                }
                 if (parsed == null)
                 {
                     return null;
