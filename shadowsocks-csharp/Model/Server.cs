@@ -1,9 +1,10 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Text;
 using System.Web;
 using Shadowsocks.Controller;
+using Shadowsocks.Encryption;
 using System.Text.RegularExpressions;
 using System.Linq;
 using Newtonsoft.Json;
@@ -17,6 +18,49 @@ namespace Shadowsocks.Model
         public const string DefaultMethod = "chacha20-ietf-poly1305";
         public const int DefaultPort = 8388;
 
+        public static bool Is2022Method(string method)
+        {
+            return !string.IsNullOrEmpty(method) &&
+                   method.StartsWith("2022-", StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static int Get2022KeySize(string method)
+        {
+            if (string.Equals(method, "2022-blake3-aes-128-gcm", StringComparison.OrdinalIgnoreCase))
+            {
+                return 16;
+            }
+            if (string.Equals(method, "2022-blake3-aes-256-gcm", StringComparison.OrdinalIgnoreCase))
+            {
+                return 32;
+            }
+            return 0;
+        }
+
+        /// <summary>
+        /// Validates a 2022 PSK. Returns null when valid, or an error message.
+        /// The password may be "serverPSK" (anonymous) or
+        /// "serverPSK:userPSK" (SIP023 identity).
+        /// </summary>
+        public static string Validate2022Password(string method, string password)
+        {
+            if (!Is2022Method(method))
+            {
+                return null;
+            }
+            try
+            {
+                using (EncryptorFactory.GetEncryptor(method, password))
+                {
+                }
+                return null;
+            }
+            catch (Exception e)
+            {
+                return e.Message;
+            }
+        }
+
         #region ParseLegacyURL
         private static readonly Regex UrlFinder = new Regex(@"ss://(?<base64>[A-Za-z0-9+-/=_]+)(?:#(?<tag>\S+))?", RegexOptions.IgnoreCase);
         private static readonly Regex DetailsParser = new Regex(@"^((?<method>.+?):(?<password>.*)@(?<hostname>.+?):(?<port>\d+?))$", RegexOptions.IgnoreCase);
@@ -29,6 +73,15 @@ namespace Shadowsocks.Model
         public int server_port;
         public string password;
         public string method;
+
+        /// <summary>
+        /// Whether this server participates in the High Availability strategy.
+        /// Off by default: the user opts in per server.
+        /// </summary>
+        [DefaultValue(false)]
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore, DefaultValueHandling = DefaultValueHandling.IgnoreAndPopulate)]
+        public bool highAvailability;
+
         // optional fields
         [DefaultValue("")]
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore, DefaultValueHandling = DefaultValueHandling.IgnoreAndPopulate)]
@@ -215,7 +268,7 @@ namespace Shadowsocks.Model
                 // parse base64 UserInfo
                 string rawUserInfo = parsedUrl.GetComponents(UriComponents.UserInfo, UriFormat.Unescaped);
                 string base64 = rawUserInfo.Replace('-', '+').Replace('_', '/');    // Web-safe base64 to normal base64
-                string userInfo = "";
+                string userInfo;
                 try
                 {
                     userInfo = Encoding.UTF8.GetString(Convert.FromBase64String(
@@ -223,7 +276,9 @@ namespace Shadowsocks.Model
                 }
                 catch (FormatException)
                 {
-                    return null;
+                    // Some clients emit percent-encoded "method:password"
+                    // userinfo instead of base64. Accept that form too.
+                    userInfo = rawUserInfo;
                 }
                 string[] userInfoParts = userInfo.Split(new char[] { ':' }, 2);
                 if (userInfoParts.Length != 2)

@@ -1,9 +1,9 @@
-﻿using System;
+﻿using Shadowsocks.Model;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using System.Windows.Input;
-using GlobalHotKey;
+using System.Windows.Forms;
 
 namespace Shadowsocks.Controller.Hotkeys
 {
@@ -12,120 +12,161 @@ namespace Shadowsocks.Controller.Hotkeys
         private static HotKeyManager _hotKeyManager;
 
         public delegate void HotKeyCallBackHandler();
+
         // map key and corresponding handler function
-        private static Dictionary<HotKey, HotKeyCallBackHandler> _keymap = new Dictionary<HotKey, HotKeyCallBackHandler>();
+        private static readonly Dictionary<HotKey, HotKeyCallBackHandler> _keymap =
+            new Dictionary<HotKey, HotKeyCallBackHandler>();
 
         public static void Init(ShadowsocksController controller)
         {
-            _hotKeyManager = new HotKeyManager();
-            _hotKeyManager.KeyPressed += HotKeyManagerPressed;
-
+            // The hidden hotkey window is created lazily, only when a hotkey
+            // is actually registered.
             HotkeyCallbacks.InitInstance(controller);
+        }
+
+        private static void EnsureManager()
+        {
+            if (_hotKeyManager == null)
+            {
+                _hotKeyManager = new HotKeyManager();
+                _hotKeyManager.KeyPressed += HotKeyManagerPressed;
+            }
         }
 
         public static void Destroy()
         {
+            if (_hotKeyManager == null)
+            {
+                return;
+            }
             _hotKeyManager.KeyPressed -= HotKeyManagerPressed;
             _hotKeyManager.Dispose();
+            _hotKeyManager = null;
         }
 
         private static void HotKeyManagerPressed(object sender, KeyPressedEventArgs e)
         {
-            var hotkey = e.HotKey;
-            HotKeyCallBackHandler callback;
-            if (_keymap.TryGetValue(hotkey, out callback))
+            if (_keymap.TryGetValue(e.HotKey, out HotKeyCallBackHandler callback))
+            {
                 callback();
+            }
         }
 
         public static bool RegHotkey(HotKey hotkey, HotKeyCallBackHandler callback)
         {
             UnregExistingHotkey(callback);
+            EnsureManager();
             return Register(hotkey, callback);
         }
 
-        public static bool UnregExistingHotkey(HotKeys.HotKeyCallBackHandler cb)
+        public static bool UnregExistingHotkey(HotKeyCallBackHandler callback)
         {
-            HotKey existingHotKey;
-            if (IsCallbackExists(cb, out existingHotKey))
+            if (IsCallbackExists(callback, out HotKey existingHotKey))
             {
-                // unregister existing one
                 Unregister(existingHotKey);
                 return true;
             }
-            else
-            {
-                return false;
-            }
+            return false;
         }
 
-        public static bool IsHotkeyExists( HotKey hotKey )
+        public static bool IsHotkeyExists(HotKey hotKey)
         {
             if (hotKey == null) throw new ArgumentNullException(nameof(hotKey));
-            return _keymap.Any( v => v.Key.Equals( hotKey ) );
+            return _keymap.Any(v => v.Key.Equals(hotKey));
         }
 
-        public static bool IsCallbackExists( HotKeyCallBackHandler cb, out HotKey hotkey)
+        public static bool IsCallbackExists(HotKeyCallBackHandler callback, out HotKey hotkey)
         {
-            if (cb == null) throw new ArgumentNullException(nameof(cb));
-            if (_keymap.Any(v => v.Value == cb))
+            if (callback == null) throw new ArgumentNullException(nameof(callback));
+            if (_keymap.Any(v => v.Value == callback))
             {
-                hotkey = _keymap.First(v => v.Value == cb).Key;
+                hotkey = _keymap.First(v => v.Value == callback).Key;
                 return true;
             }
-            else
-            {
-                hotkey = null;
-                return false;
-            }
+            hotkey = null;
+            return false;
         }
 
         #region Converters
 
-        public static string HotKey2Str( HotKey key )
+        public static string HotKey2Str(HotKey key)
         {
             if (key == null) throw new ArgumentNullException(nameof(key));
-            return HotKey2Str( key.Key, key.Modifiers );
+            return HotKey2Str(key.Key, key.Modifiers);
         }
 
-        public static string HotKey2Str( Key key, ModifierKeys modifier )
+        public static string HotKey2Str(Keys key, Keys modifiers)
         {
-            if (!Enum.IsDefined(typeof(Key), key))
-                throw new InvalidEnumArgumentException(nameof(key), (int) key, typeof(Key));
-            try
-            {
-                ModifierKeysConverter mkc = new ModifierKeysConverter();
-                var keyStr = Enum.GetName(typeof(Key), key);
-                var modifierStr = mkc.ConvertToInvariantString(modifier);
+            if (!Enum.IsDefined(typeof(Keys), key))
+                throw new InvalidEnumArgumentException(nameof(key), (int)key, typeof(Keys));
 
-                return $"{modifierStr}+{keyStr}";
-            }
-            catch (NotSupportedException)
+            var parts = new List<string>();
+            if ((modifiers & Keys.Control) != 0) parts.Add("Ctrl");
+            if ((modifiers & Keys.Alt) != 0) parts.Add("Alt");
+            if ((modifiers & Keys.Shift) != 0) parts.Add("Shift");
+
+            Keys keyCode = key & Keys.KeyCode;
+            if (keyCode == Keys.None)
             {
-                // converter exception
                 return null;
             }
+
+            var converter = new KeysConverter();
+            string keyName = converter.ConvertToString(keyCode) ?? keyCode.ToString();
+            parts.Add(keyName);
+            return string.Join("+", parts);
         }
 
-        public static HotKey Str2HotKey(string s)
+        public static HotKey Str2HotKey(string value)
         {
             try
             {
-                if (string.IsNullOrEmpty(s)) return null;
-                int offset = s.LastIndexOf("+", StringComparison.OrdinalIgnoreCase);
+                if (string.IsNullOrWhiteSpace(value)) return null;
+                int offset = value.LastIndexOf("+", StringComparison.OrdinalIgnoreCase);
                 if (offset <= 0) return null;
-                string modifierStr = s.Substring(0, offset).Trim();
-                string keyStr = s.Substring(offset + 1).Trim();
 
-                KeyConverter kc = new KeyConverter();
-                ModifierKeysConverter mkc = new ModifierKeysConverter();
-                Key key = (Key) kc.ConvertFrom(keyStr.ToUpper());
-                ModifierKeys modifier = (ModifierKeys) mkc.ConvertFrom(modifierStr.ToUpper());
+                string modifierText = value.Substring(0, offset).Trim();
+                string keyText = value.Substring(offset + 1).Trim();
 
-                return new HotKey(key, modifier);
+                Keys modifiers = Keys.None;
+                foreach (string part in modifierText.Split('+'))
+                {
+                    switch (part.Trim().ToLowerInvariant())
+                    {
+                        case "ctrl":
+                        case "control":
+                            modifiers |= Keys.Control;
+                            break;
+                        case "alt":
+                            modifiers |= Keys.Alt;
+                            break;
+                        case "shift":
+                            modifiers |= Keys.Shift;
+                            break;
+                        default:
+                            return null;
+                    }
+                }
+
+                var converter = new KeysConverter();
+                object parsed = converter.ConvertFromString(keyText);
+                if (parsed == null)
+                {
+                    return null;
+                }
+
+                return new HotKey((Keys)parsed & Keys.KeyCode, modifiers);
             }
             catch (NotSupportedException)
             {
-                // converter exception
+                return null;
+            }
+            catch (FormatException)
+            {
+                return null;
+            }
+            catch (ArgumentException)
+            {
                 return null;
             }
             catch (NullReferenceException)
@@ -136,16 +177,14 @@ namespace Shadowsocks.Controller.Hotkeys
 
         #endregion
 
-        private static bool Register(HotKey key, HotKeyCallBackHandler callBack)
+        private static bool Register(HotKey key, HotKeyCallBackHandler callback)
         {
-            if (key == null)
-                throw new ArgumentNullException(nameof(key));
-            if (callBack == null)
-                throw new ArgumentNullException(nameof(callBack));
+            if (key == null) throw new ArgumentNullException(nameof(key));
+            if (callback == null) throw new ArgumentNullException(nameof(callback));
             try
             {
                 _hotKeyManager.Register(key);
-                _keymap[key] = callBack;
+                _keymap[key] = callback;
                 return true;
             }
             catch (ArgumentException)
@@ -164,11 +203,9 @@ namespace Shadowsocks.Controller.Hotkeys
 
         private static void Unregister(HotKey key)
         {
-            if (key == null)
-                throw new ArgumentNullException(nameof(key));
+            if (key == null) throw new ArgumentNullException(nameof(key));
             _hotKeyManager.Unregister(key);
-            if(_keymap.ContainsKey(key))
-                _keymap.Remove(key);
+            _keymap.Remove(key);
         }
     }
 }

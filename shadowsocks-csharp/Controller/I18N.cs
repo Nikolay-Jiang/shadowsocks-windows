@@ -108,15 +108,28 @@ namespace Shadowsocks.Controller
                 if (item == null) continue;
                 item.Text = GetString(item.Text);
             }
-            TranslateMenu(c.Menu);
+            TranslateMenuStrip(c.MainMenuStrip);
         }
-        public static void TranslateMenu(Menu m)
+
+        private static void TranslateMenuStrip(MenuStrip menu)
         {
-            if (m == null) return;
-            foreach (var item in ViewUtils.GetMenuItems(m))
+            if (menu == null) return;
+            foreach (ToolStripItem item in menu.Items)
             {
-                if (item == null) continue;
-                item.Text = GetString(item.Text);
+                TranslateToolStripItem(item);
+            }
+        }
+
+        private static void TranslateToolStripItem(ToolStripItem item)
+        {
+            if (item == null) return;
+            item.Text = GetString(item.Text);
+            if (item is ToolStripMenuItem menuItem)
+            {
+                foreach (ToolStripItem child in menuItem.DropDownItems)
+                {
+                    TranslateToolStripItem(child);
+                }
             }
         }
     }

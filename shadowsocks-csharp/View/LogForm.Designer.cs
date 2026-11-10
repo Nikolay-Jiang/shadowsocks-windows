@@ -29,22 +29,18 @@
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            System.Windows.Forms.DataVisualization.Charting.ChartArea chartArea1 = new System.Windows.Forms.DataVisualization.Charting.ChartArea();
-            System.Windows.Forms.DataVisualization.Charting.Legend legend1 = new System.Windows.Forms.DataVisualization.Charting.Legend();
-            System.Windows.Forms.DataVisualization.Charting.Series series1 = new System.Windows.Forms.DataVisualization.Charting.Series();
-            System.Windows.Forms.DataVisualization.Charting.Series series2 = new System.Windows.Forms.DataVisualization.Charting.Series();
             this.LogMessageTextBox = new System.Windows.Forms.TextBox();
-            this.MainMenu = new System.Windows.Forms.MainMenu(this.components);
-            this.FileMenuItem = new System.Windows.Forms.MenuItem();
-            this.OpenLocationMenuItem = new System.Windows.Forms.MenuItem();
-            this.ExitMenuItem = new System.Windows.Forms.MenuItem();
-            this.ViewMenuItem = new System.Windows.Forms.MenuItem();
-            this.ClearLogsMenuItem = new System.Windows.Forms.MenuItem();
-            this.ChangeFontMenuItem = new System.Windows.Forms.MenuItem();
-            this.WrapTextMenuItem = new System.Windows.Forms.MenuItem();
-            this.TopMostMenuItem = new System.Windows.Forms.MenuItem();
-            this.MenuItemSeparater = new System.Windows.Forms.MenuItem();
-            this.ShowToolbarMenuItem = new System.Windows.Forms.MenuItem();
+            this.MainMenu = new System.Windows.Forms.MenuStrip();
+            this.FileMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.OpenLocationMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.ExitMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.ViewMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.ClearLogsMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.ChangeFontMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.WrapTextMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.TopMostMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.MenuItemSeparater = new System.Windows.Forms.ToolStripSeparator();
+            this.ShowToolbarMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.TopMostCheckBox = new System.Windows.Forms.CheckBox();
             this.ChangeFontButton = new System.Windows.Forms.Button();
             this.ClearLogsButton = new System.Windows.Forms.Button();
@@ -52,14 +48,13 @@
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
             this.ToolbarFlowLayoutPanel = new System.Windows.Forms.FlowLayoutPanel();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
-            this.trafficChart = new System.Windows.Forms.DataVisualization.Charting.Chart();
+            this.trafficChart = new TrafficChart();
             this.tableLayoutPanel1.SuspendLayout();
             this.ToolbarFlowLayoutPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
             this.splitContainer1.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.trafficChart)).BeginInit();
             this.SuspendLayout();
             // 
             // LogMessageTextBox
@@ -79,34 +74,30 @@
             // 
             // MainMenu
             // 
-            this.MainMenu.MenuItems.AddRange(new System.Windows.Forms.MenuItem[] {
+            this.MainMenu.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.FileMenuItem,
             this.ViewMenuItem});
             // 
             // FileMenuItem
             // 
-            this.FileMenuItem.Index = 0;
-            this.FileMenuItem.MenuItems.AddRange(new System.Windows.Forms.MenuItem[] {
+            this.FileMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.OpenLocationMenuItem,
             this.ExitMenuItem});
             this.FileMenuItem.Text = "&File";
             // 
             // OpenLocationMenuItem
             // 
-            this.OpenLocationMenuItem.Index = 0;
             this.OpenLocationMenuItem.Text = "&Open Location";
             this.OpenLocationMenuItem.Click += new System.EventHandler(this.OpenLocationMenuItem_Click);
             // 
             // ExitMenuItem
             // 
-            this.ExitMenuItem.Index = 1;
             this.ExitMenuItem.Text = "E&xit";
             this.ExitMenuItem.Click += new System.EventHandler(this.ExitMenuItem_Click);
             // 
             // ViewMenuItem
             // 
-            this.ViewMenuItem.Index = 1;
-            this.ViewMenuItem.MenuItems.AddRange(new System.Windows.Forms.MenuItem[] {
+            this.ViewMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.ClearLogsMenuItem,
             this.ChangeFontMenuItem,
             this.WrapTextMenuItem,
@@ -117,36 +108,30 @@
             // 
             // ClearLogsMenuItem
             // 
-            this.ClearLogsMenuItem.Index = 0;
             this.ClearLogsMenuItem.Text = "&Clear Logs";
             this.ClearLogsMenuItem.Click += new System.EventHandler(this.ClearLogsMenuItem_Click);
             // 
             // ChangeFontMenuItem
             // 
-            this.ChangeFontMenuItem.Index = 1;
             this.ChangeFontMenuItem.Text = "Change &Font";
             this.ChangeFontMenuItem.Click += new System.EventHandler(this.ChangeFontMenuItem_Click);
             // 
             // WrapTextMenuItem
             // 
-            this.WrapTextMenuItem.Index = 2;
             this.WrapTextMenuItem.Text = "&Wrap Text";
             this.WrapTextMenuItem.Click += new System.EventHandler(this.WrapTextMenuItem_Click);
             // 
             // TopMostMenuItem
             // 
-            this.TopMostMenuItem.Index = 3;
             this.TopMostMenuItem.Text = "&Top Most";
             this.TopMostMenuItem.Click += new System.EventHandler(this.TopMostMenuItem_Click);
             // 
             // MenuItemSeparater
             // 
-            this.MenuItemSeparater.Index = 4;
-            this.MenuItemSeparater.Text = "-";
+            
             // 
             // ShowToolbarMenuItem
             // 
-            this.ShowToolbarMenuItem.Index = 5;
             this.ShowToolbarMenuItem.Text = "&Show Toolbar";
             this.ShowToolbarMenuItem.Click += new System.EventHandler(this.ShowToolbarMenuItem_Click);
             // 
@@ -246,55 +231,23 @@
             // 
             // trafficChart
             // 
-            chartArea1.AxisX.LabelStyle.Enabled = false;
-            chartArea1.AxisX.MajorGrid.Interval = 5D;
-            chartArea1.AxisX.MajorGrid.LineColor = System.Drawing.Color.LightGray;
-            chartArea1.AxisX.MajorTickMark.Enabled = false;
-            chartArea1.AxisX.Maximum = 61D;
-            chartArea1.AxisX.Minimum = 1D;
-            chartArea1.AxisY.IntervalAutoMode = System.Windows.Forms.DataVisualization.Charting.IntervalAutoMode.VariableCount;
-            chartArea1.AxisY.LabelAutoFitMaxFontSize = 8;
-            chartArea1.AxisY.LabelStyle.Interval = 0D;
-            chartArea1.AxisY.MajorGrid.LineColor = System.Drawing.Color.LightGray;
-            chartArea1.AxisY.MajorTickMark.Enabled = false;
-            chartArea1.AxisY2.MajorGrid.LineColor = System.Drawing.Color.LightGray;
-            chartArea1.AxisY2.Minimum = 0D;
-            chartArea1.Name = "ChartArea1";
-            this.trafficChart.ChartAreas.Add(chartArea1);
             this.trafficChart.Dock = System.Windows.Forms.DockStyle.Fill;
-            legend1.MaximumAutoSize = 25F;
-            legend1.Name = "Legend1";
-            this.trafficChart.Legends.Add(legend1);
             this.trafficChart.Location = new System.Drawing.Point(0, 0);
             this.trafficChart.Name = "trafficChart";
-            this.trafficChart.Palette = System.Windows.Forms.DataVisualization.Charting.ChartColorPalette.None;
-            series1.BorderWidth = 2;
-            series1.ChartArea = "ChartArea1";
-            series1.ChartType = System.Windows.Forms.DataVisualization.Charting.SeriesChartType.Spline;
-            series1.Color = System.Drawing.Color.FromArgb(255, 128, 0);
-            series1.IsXValueIndexed = true;
-            series1.Legend = "Legend1";
-            series1.Name = "Inbound";
-            series2.BorderWidth = 2;
-            series2.ChartArea = "ChartArea1";
-            series2.ChartType = System.Windows.Forms.DataVisualization.Charting.SeriesChartType.Spline;
-            series2.Color = System.Drawing.Color.FromArgb(128, 128, 255);
-            series2.IsXValueIndexed = true;
-            series2.Legend = "Legend1";
-            series2.Name = "Outbound";
-            this.trafficChart.Series.Add(series1);
-            this.trafficChart.Series.Add(series2);
             this.trafficChart.Size = new System.Drawing.Size(378, 42);
             this.trafficChart.TabIndex = 0;
-            this.trafficChart.Text = "chart1";
             // 
             // LogForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
             this.ClientSize = new System.Drawing.Size(384, 161);
+            this.Controls.Add(this.MainMenu);
             this.Controls.Add(this.tableLayoutPanel1);
-            this.Menu = this.MainMenu;
+            this.MainMenuStrip = this.MainMenu;
+            this.MainMenu.Dock = System.Windows.Forms.DockStyle.Top;
+            this.MainMenu.Name = "MainMenu";
+            this.MainMenu.Text = "MainMenu";
             this.MinimumSize = new System.Drawing.Size(400, 200);
             this.Name = "LogForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
@@ -311,7 +264,6 @@
             this.splitContainer1.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).EndInit();
             this.splitContainer1.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)(this.trafficChart)).EndInit();
             this.ResumeLayout(false);
 
         }
@@ -319,24 +271,24 @@
         #endregion
 
         private System.Windows.Forms.TextBox LogMessageTextBox;
-        private System.Windows.Forms.MainMenu MainMenu;
-        private System.Windows.Forms.MenuItem FileMenuItem;
-        private System.Windows.Forms.MenuItem OpenLocationMenuItem;
-        private System.Windows.Forms.MenuItem ExitMenuItem;
+        private System.Windows.Forms.MenuStrip MainMenu;
+        private System.Windows.Forms.ToolStripMenuItem FileMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem OpenLocationMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem ExitMenuItem;
         private System.Windows.Forms.CheckBox WrapTextCheckBox;
         private System.Windows.Forms.Button ClearLogsButton;
         private System.Windows.Forms.Button ChangeFontButton;
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel1;
         private System.Windows.Forms.CheckBox TopMostCheckBox;
-        private System.Windows.Forms.MenuItem ViewMenuItem;
-        private System.Windows.Forms.MenuItem ClearLogsMenuItem;
-        private System.Windows.Forms.MenuItem ChangeFontMenuItem;
-        private System.Windows.Forms.MenuItem WrapTextMenuItem;
-        private System.Windows.Forms.MenuItem TopMostMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem ViewMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem ClearLogsMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem ChangeFontMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem WrapTextMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem TopMostMenuItem;
         private System.Windows.Forms.FlowLayoutPanel ToolbarFlowLayoutPanel;
-        private System.Windows.Forms.MenuItem MenuItemSeparater;
-        private System.Windows.Forms.MenuItem ShowToolbarMenuItem;
+        private System.Windows.Forms.ToolStripSeparator MenuItemSeparater;
+        private System.Windows.Forms.ToolStripMenuItem ShowToolbarMenuItem;
         private System.Windows.Forms.SplitContainer splitContainer1;
-        private System.Windows.Forms.DataVisualization.Charting.Chart trafficChart;
+        private TrafficChart trafficChart;
     }
 }

@@ -364,3 +364,13 @@ MigrationBackup/
 !.vscode/launch.json
 !.vscode/extensions.json
 *.code-workspace
+
+# Runtime configuration written next to the executable
+gui-config.json
+gui-logviewer.json
+pac.txt
+user-rule.txt
+ss_win_temp/
+
+# crash dumps
+core.*

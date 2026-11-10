@@ -22,28 +22,16 @@ namespace Shadowsocks.Util
             return children.SelectMany(GetChildControls<TControl>).Concat(children);
         }
 
-        public static IEnumerable<MenuItem> GetMenuItems(Menu m)
-        {
-            if (m?.MenuItems == null || m.MenuItems.Count == 0) return Enumerable.Empty<MenuItem>();
-            var children = new List<MenuItem>();
-            foreach (var item in m.MenuItems)
-            {
-                children.Add((MenuItem)item);
-            }
-            return children.SelectMany(GetMenuItems).Concat(children);
-        }
-
         // Workaround NotifyIcon's 63 chars limit
         // https://stackoverflow.com/questions/579665/how-can-i-show-a-systray-tooltip-longer-than-63-chars
         public static void SetNotifyIconText(NotifyIcon ni, string text)
         {
-            if (text.Length >= 128)
-                throw new ArgumentOutOfRangeException("Text limited to 127 characters");
-            Type t = typeof(NotifyIcon);
-            BindingFlags hidden = BindingFlags.NonPublic | BindingFlags.Instance;
-            t.GetField("text", hidden).SetValue(ni, text);
-            if ((bool)t.GetField("added", hidden).GetValue(ni))
-                t.GetMethod("UpdateIcon", hidden).Invoke(ni, new object[] { true });
+            // .NET (Core) removed the old private NotifyIcon fields; the
+            // public Text property now accepts up to 127 characters.
+            text ??= "";
+            if (text.Length > 127)
+                text = text.Substring(0, 127);
+            ni.Text = text;
         }
 
         public static Bitmap AddBitmapOverlay(Bitmap original, params Bitmap[] overlays)

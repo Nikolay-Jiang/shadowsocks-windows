@@ -39,6 +39,8 @@
             this.IPTextBox = new System.Windows.Forms.TextBox();
             this.ServerPortTextBox = new System.Windows.Forms.TextBox();
             this.PasswordTextBox = new System.Windows.Forms.TextBox();
+            this.passwordPanel = new System.Windows.Forms.TableLayoutPanel();
+            this.PasswordGenerateButton = new System.Windows.Forms.Button();
             this.EncryptionLabel = new System.Windows.Forms.Label();
             this.EncryptionSelect = new System.Windows.Forms.ComboBox();
             this.TimeoutLabel = new System.Windows.Forms.Label();
@@ -68,7 +70,9 @@
             this.tableLayoutPanel7 = new System.Windows.Forms.TableLayoutPanel();
             this.GroupLabel = new System.Windows.Forms.Label();
             this.GroupTextBox = new System.Windows.Forms.TextBox();
+            this.HighAvailabilityCheckBox = new System.Windows.Forms.CheckBox();
             this.tableLayoutPanel1.SuspendLayout();
+            this.passwordPanel.SuspendLayout();
             this.ServerGroupBox.SuspendLayout();
             this.tableLayoutPanel7.SuspendLayout();
             this.SuspendLayout();
@@ -88,7 +92,7 @@
             this.tableLayoutPanel1.Controls.Add(this.PasswordLabel, 0, 2);
             this.tableLayoutPanel1.Controls.Add(this.IPTextBox, 1, 0);
             this.tableLayoutPanel1.Controls.Add(this.ServerPortTextBox, 1, 1);
-            this.tableLayoutPanel1.Controls.Add(this.PasswordTextBox, 1, 2);
+            this.tableLayoutPanel1.Controls.Add(this.passwordPanel, 1, 2);
             this.tableLayoutPanel1.Controls.Add(this.EncryptionLabel, 0, 4);
             this.tableLayoutPanel1.Controls.Add(this.EncryptionSelect, 1, 4);
             this.tableLayoutPanel1.Controls.Add(this.TimeoutLabel, 0, 11);
@@ -101,13 +105,15 @@
             this.tableLayoutPanel1.Controls.Add(this.NeedPluginArgCheckBox, 1, 7);
             this.tableLayoutPanel1.Controls.Add(this.GroupTextBox, 1, 12);
             this.tableLayoutPanel1.Controls.Add(this.GroupLabel, 0, 12);
+            this.tableLayoutPanel1.Controls.Add(this.HighAvailabilityCheckBox, 1, 13);
             this.tableLayoutPanel1.Controls.Add(this.RemarksLabel, 0, 10);
             this.tableLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tableLayoutPanel1.Location = new System.Drawing.Point(4, 22);
             this.tableLayoutPanel1.Margin = new System.Windows.Forms.Padding(0);
             this.tableLayoutPanel1.Name = "tableLayoutPanel1";
             this.tableLayoutPanel1.Padding = new System.Windows.Forms.Padding(4);
-            this.tableLayoutPanel1.RowCount = 14;
+            this.tableLayoutPanel1.RowCount = 15;
+            this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle());
             this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle());
             this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle());
             this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle());
@@ -210,6 +216,32 @@
             this.ServerPortTextBox.Size = new System.Drawing.Size(205, 25);
             this.ServerPortTextBox.TabIndex = 1;
             this.ServerPortTextBox.WordWrap = false;
+            // 
+            // passwordPanel
+            // 
+            this.passwordPanel.ColumnCount = 2;
+            this.passwordPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.passwordPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
+            this.passwordPanel.Controls.Add(this.PasswordTextBox, 0, 0);
+            this.passwordPanel.Controls.Add(this.PasswordGenerateButton, 1, 0);
+            this.passwordPanel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.passwordPanel.Margin = new System.Windows.Forms.Padding(0);
+            this.passwordPanel.Name = "passwordPanel";
+            this.passwordPanel.RowCount = 1;
+            this.passwordPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.passwordPanel.Size = new System.Drawing.Size(205, 25);
+            this.passwordPanel.TabIndex = 2;
+            // 
+            // PasswordGenerateButton
+            // 
+            this.PasswordGenerateButton.AutoSize = true;
+            this.PasswordGenerateButton.Margin = new System.Windows.Forms.Padding(4, 0, 0, 0);
+            this.PasswordGenerateButton.Name = "PasswordGenerateButton";
+            this.PasswordGenerateButton.Size = new System.Drawing.Size(70, 25);
+            this.PasswordGenerateButton.TabIndex = 0;
+            this.PasswordGenerateButton.Text = "Generate";
+            this.PasswordGenerateButton.UseVisualStyleBackColor = true;
+            this.PasswordGenerateButton.Click += new System.EventHandler(this.PasswordGenerateButton_Click);
             // 
             // PasswordTextBox
             // 
@@ -554,6 +586,16 @@
             this.tableLayoutPanel7.Size = new System.Drawing.Size(562, 533);
             this.tableLayoutPanel7.TabIndex = 8;
             // 
+            // HighAvailabilityCheckBox
+            // 
+            this.HighAvailabilityCheckBox.AutoSize = true;
+            this.HighAvailabilityCheckBox.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.HighAvailabilityCheckBox.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.HighAvailabilityCheckBox.Name = "HighAvailabilityCheckBox";
+            this.HighAvailabilityCheckBox.TabIndex = 13;
+            this.HighAvailabilityCheckBox.Text = "Include in High Availability";
+            this.HighAvailabilityCheckBox.UseVisualStyleBackColor = true;
+            // 
             // GroupLabel
             // 
             this.GroupLabel.Anchor = System.Windows.Forms.AnchorStyles.Right;
@@ -595,6 +637,7 @@
             this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.ConfigForm_FormClosed);
             this.Shown += new System.EventHandler(this.ConfigForm_Shown);
             this.KeyDown += new System.Windows.Forms.KeyEventHandler(this.ConfigForm_KeyDown);
+            this.passwordPanel.ResumeLayout(false);
             this.tableLayoutPanel1.ResumeLayout(false);
             this.tableLayoutPanel1.PerformLayout();
             this.ServerGroupBox.ResumeLayout(false);
@@ -639,6 +682,8 @@
         private System.Windows.Forms.TextBox PluginOptionsTextBox;
         private System.Windows.Forms.CheckBox ShowPasswdCheckBox;
         private System.Windows.Forms.TextBox PasswordTextBox;
+        private System.Windows.Forms.TableLayoutPanel passwordPanel;
+        private System.Windows.Forms.Button PasswordGenerateButton;
         private System.Windows.Forms.TextBox PluginArgumentsTextBox;
         private System.Windows.Forms.Label PluginArgumentsLabel;
         private System.Windows.Forms.ToolTip toolTip1;
@@ -647,6 +692,7 @@
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel7;
         private System.Windows.Forms.Label GroupLabel;
         private System.Windows.Forms.TextBox GroupTextBox;
+        private System.Windows.Forms.CheckBox HighAvailabilityCheckBox;
     }
 }
 

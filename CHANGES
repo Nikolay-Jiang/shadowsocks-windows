@@ -1,3 +1,21 @@
+﻿4.5.0.0
+-------
+- Add Shadowsocks 2022 (SIP022): 2022-blake3-aes-128-gcm and
+  2022-blake3-aes-256-gcm over TCP and UDP, including SIP023 user
+  identities (serverPSK:userPSK).
+- Replace libsscrypto (mbed TLS / libsodium / OpenSSL) with the
+  cryptography shipped in .NET.
+- Target .NET 10 (net10.0-windows), x64, self-contained.
+- Replace the old WinForms chart control and refresh high-DPI handling.
+- High Availability now uses an opt-in per-server flag, TCP latency EWMA,
+  failure cooldowns and sticky selection. Load balancing is hidden.
+- Replace the remaining WPF dialogs (forward proxy, online config, hotkeys,
+  server sharing) with WinForms and remove the WPF/ReactiveUI dependencies.
+- Temporarily disable the update UI and automatic update checks. About now
+  shows the client, .NET and OS version.
+- Catch UI exceptions instead of terminating the tray client; unobserved task
+  exceptions are logged and observed.
+
 4.4.1.0 2022-02-08
 - Add plain/none ciphers
 

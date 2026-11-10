@@ -46,6 +46,8 @@ Quit,Выход,退出,結束,終了,종료,Quitter
 Edit Servers,Редактирование серверов,编辑服务器,編輯伺服器,サーバーの編集,서버 수정,Éditer serveurs
 Load Balance,Балансировка нагрузки,负载均衡,負載平衡,サーバーロードバランス,로드밸런싱,Répartition de charge
 High Availability,Высокая доступность,高可用,高可用性,高可用性,고가용성,Haute disponibilité
+Include in High Availability,,参与高可用,參與高可用,,,
+No server is enabled for high availability,,没有启用高可用的服务器,沒有啟用高可用的伺服器,,,
 Show Plugin Output,События плагинов в журнале,显示插件输出,,プラグインの出力情報を表示,플러그인 출력 보이기,Afficher la sortie du plugin
 Write translation template,Создать шаблон для перевода,写入翻译模板,,翻訳テンプレートファイルを書き込む,번역 템플릿 쓰기,Écrire un modèle de traduction
 ,,,,,,
@@ -156,3 +158,37 @@ Whether to discard unconfigured servers,Внесенные изменения б
 ,,,,タイムアウト値のフォーマットが無効なため、オートセーブできません。変更を破棄しますか,,
 "Error occured when process proxy setting, do you want reset current setting and retry?",Произошла ошибка при обработке настроек. Хотите сбросить текущие настройки и попробовать снова?,处理代理设置时发生错误，是否重置当前代理设置并重试？,,プロキシ設定の処理にエラーが発生しました、現在のプロキシ設定をリセットし、再試行してもいいですか,프록시 설정을 처리하는데에 오류가 발생했습니다. 현재 설정을 폐기하고 다시 시도하시겠습니까?,Une erreur s'est produite lors du processus de configuration du proxy. Voulez-vous réinitialiser le paramètre actuel et réessayer?
 "Unrecoverable proxy setting error occured, see log for detail","Произошла серьезная ошибка, подробности можно узнать в журналах",发生不可恢复的代理设置错误，查看日志以取得详情,,プロキシ設定に回復不能なエラーが発生しました、ログで詳細をご確認ください,복구 불가능한 프록시 설정 오류가 발생했습니다. 자세한 정보는 로그를 참조하세요.,"Une erreur de paramètre de proxy irrécupérable s'est produite, consultez le journal pour plus de détails"
+Type,,类型,類型,,,
+Details,,详细,詳細,,,
+Address,,地址,位址,,,
+Port,,端口,連接埠,,,
+Timeout,,超时,逾時,,,
+Credentials (optional),,凭据（可选）,認證（選填）,,,
+Username,,用户名,使用者名稱,,,
+No Proxy,,不使用代理,不使用代理,,,
+SOCKS5,,SOCKS5,SOCKS5,,,
+HTTP,,HTTP,HTTP,,,
+Save,,保存,儲存,,,
+Add,,添加,新增,,,
+Close,,关闭,關閉,,,
+Register All,,全部注册,全部註冊,,,
+Copy Link,,复制链接,複製連結,,,
+Update,,更新,更新,,,
+Update All,,全部更新,全部更新,,,
+Remove,,删除,刪除,,,
+Invalid URL,,无效的 URL,無效的 URL,,,
+Address can't be empty.,,地址不能为空。,位址不能為空。,,,
+Port is out of range.,,端口超出范围。,連接埠超出範圍。,,,
+Timeout is out of range.,,超时超出范围。,逾時超出範圍。,,,
+You must provide both username and password.,,用户名和密码必须同时填写。,使用者名稱和密碼必須同時填寫。,,,
+Online config updated successfully.,,在线配置更新成功。,線上設定更新成功。,,,
+Failed to update online config.,,在线配置更新失败。,線上設定更新失敗。,,,
+All online configs updated successfully.,,全部在线配置更新成功。,全部線上設定更新成功。,,,
+Some online configs failed to update:,,部分在线配置更新失败：,部分線上設定更新失敗：,,,
+ToggleSystemProxy,,切换系统代理,切換系統代理,,,
+ToggleProxyMode,,切换代理模式,切換代理模式,,,
+AllowClientsFromLAN,,允许局域网连接,允許區域網路連線,,,
+OpenLogsWindow,,打开日志窗口,開啟記錄檔視窗,,,
+SwitchToPreviousServer,,切换到上一个服务器,切換到上一個伺服器,,,
+SwitchToNextServer,,切换到下一个服务器,切換到下一個伺服器,,,
+RegisterHotkeysAtStartup,,启动时注册热键,啟動時註冊快速鍵,,,
